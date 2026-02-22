@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="dashboard-overview">
+    <h2>Fleet Overview</h2>
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <h3>Total Vehicles</h3>
+            <p class="stat-value">{{ total_vehicles }}</p>
+        </div>
+        <div class="stat-card">
+            <h3>Active Vehicles</h3>
+            <p class="stat-value">{{ active_vehicles }}</p>
+        </div>
+        <div class="stat-card">
+            <h3>Charging</h3>
+            <p class="stat-value">{{ charging_vehicles }}</p>
+        </div>
+        <div class="stat-card">
+            <h3>Avg Fleet SoC</h3>
+            <p class="stat-value">{{ avg_soc }}%</p>
+        </div>
+        <div class="stat-card alert-card">
+            <h3>Active Alerts</h3>
+            <p class="stat-value">{{ active_alerts }}</p>
+        </div>
+    </div>
+</div>
+
+<div class="vehicle-list">
+    <h2>Fleet Status</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Vehicle ID</th>
+                <th>Status</th>
+                <th>Current SoC</th>
+                <th>Last Update</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for v in vehicles %}
+            <tr>
+                <td>{{ v.id }}</td>
+                <td><span class="status-badge status-{{ v.status|lower }}">{{ v.status }}</span></td>
+                <td>{{ v.current_soc }}%</td>
+                <td>{{ v.last_update.strftime('%Y-%m-%d %H:%M') }}</td>
+                <td><a href="{{ url_for('vehicle_detail', vehicle_id=v.id) }}" class="btn btn-sm">View Details</a></td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="5" class="text-center">No vehicles found.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% endblock %}

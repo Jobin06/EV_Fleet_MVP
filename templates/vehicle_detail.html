@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="vehicle-header">
+    <h2>Vehicle Details: {{ vehicle.id }}</h2>
+    <a href="{{ url_for('dashboard') }}" class="btn btn-sm">&larr; Back to Dashboard</a>
+</div>
+
+<div class="detail-grid">
+    <!-- Vehicle Info -->
+    <div class="info-card">
+        <h3>General Information</h3>
+        <ul>
+            <li><strong>Driver Name:</strong> {{ vehicle.driver_name or 'Unassigned' }}</li>
+            <li><strong>Status:</strong> <span class="status-badge status-{{ vehicle.status|lower }}">{{ vehicle.status
+                    }}</span></li>
+            <li><strong>Last Update:</strong> {{ vehicle.last_update.strftime('%Y-%m-%d %H:%M') }}</li>
+        </ul>
+    </div>
+
+    <!-- Battery Pack Info -->
+    <div class="info-card">
+        <h3>Battery Pack Information</h3>
+        <ul>
+            {% if pack %}
+            <li><strong>Pack ID:</strong> {{ pack.id }}</li>
+            <li><strong>Capacity:</strong> {{ pack.capacity_kwh }} kWh</li>
+            {% else %}
+            <li><strong>Status:</strong> No Pack Assigned</li>
+            {% endif %}
+        </ul>
+    </div>
+</div>
+
+<div class="detail-grid" style="margin-top: 2rem;">
+    <!-- Live Telemetry Info -->
+    <div class="info-card">
+        <h3>Latest Telemetry</h3>
+        <ul>
+            {% if telemetry %}
+            <li><strong>Timestamp:</strong> {{ telemetry.timestamp.strftime('%H:%M:%S') }}</li>
+            <li><strong>State of Charge (SoC):</strong> {{ telemetry.soc }}%</li>
+            <li><strong>Pack Voltage:</strong> {{ telemetry.pack_voltage }} V</li>
+            <li><strong>Pack Current:</strong> {{ telemetry.pack_current }} A</li>
+            <li><strong>Temperature:</strong> {{ telemetry.temperature }} °C</li>
+            {% else %}
+            <li>No recent telemetry data.</li>
+            {% endif %}
+        </ul>
+    </div>
+</div>
+
+<!-- SoC vs Time Chart -->
+<div class="chart-container">
+    <h3>State of Charge (SoC) History</h3>
+    <canvas id="socChart" width="400" height="150"></canvas>
+</div>
+
+<!-- Pass data to JS using a script block with JSON -->
+<script id="chart-data" type="application/json">
+    {
+        "labels": {{ chart_labels | tojson }},
+        "data": {{ chart_data | tojson }}
+    }
+</script>
+
+{% endblock %}

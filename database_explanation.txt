@@ -1,0 +1,148 @@
+====================================================================
+               EV FLEET MVP: DATABASE EXPLANATION
+====================================================================
+
+This document explains the Database Management System (DBMS) used 
+in this project, the structure of the tables, and the Entity 
+Relationship (ER) concepts driving the architecture.
+
+--------------------------------------------------------------------
+1. HOW THE DBMS WORKS IN THIS PROJECT
+--------------------------------------------------------------------
+The DBMS used for this academic project is Oracle Database (11g).
+A DBMS is responsible for securely storing, organizing, and quickly
+retrieving data.
+
+In this project, the flow works like this:
+
+A) Storage (Oracle 11g):
+   Oracle acts as the permanent record keeper. It stores all vehicles,
+   drivers, alerts, and charging histories on disk. It enforces rules 
+   (like "A battery pack MUST belong to an existing vehicle") so that 
+   the data never gets corrupted.
+
+B) Connection (oracledb Thin Driver):
+   Because our backend is written in Python (Flask), Python needs a 
+   translator to speak to Oracle. The `oracledb` library acts as this 
+   translator, allowing Python scripts to send queries to the database 
+   and receive structured rows of data back.
+
+C) The ORM (SQLAlchemy):
+   Instead of writing raw SQL strings in our Python code every time we 
+   want data, we use an Object Relational Mapper (ORM) called SQLAlchemy.
+   SQLAlchemy maps Oracle Tables to Python Classes.
+   
+   Example:
+   Instead of writing -> SELECT * FROM vehicle WHERE id='EV-1001';
+   We write in Python -> Vehicle.query.get('EV-1001')
+
+   SQLAlchemy translates our Python code into Oracle SQL automatically, 
+   runs it through the `oracledb` driver, and returns organized Python 
+   objects that we can easily use in our HTML templates.
+
+--------------------------------------------------------------------
+2. ENTITY RELATIONSHIPS EXPLAINED
+--------------------------------------------------------------------
+The database relies on Entity Relationship (ER) concepts. We define 
+Primary Keys (unique identifiers for a row) and Foreign Keys (a linking 
+pin that connects a row in one table to a row in another table).
+
+Here are the specific relationships implemented:
+
+A. Vehicle <--> Battery Pack (1:1 Relationship)
+   - Rule: One vehicle has exactly one battery pack.
+   - Implementation: The `battery_pack` table has a Foreign Key (`vehicle_id`) 
+     pointing to the `vehicle` table. To enforce the 1-to-1 rule, we made 
+     `vehicle_id` UNIQUE. No two battery packs can point to the same car.
+
+B. Vehicle <--> Telemetry (1:N or One-to-Many)
+   - Rule: One vehicle generates thousands of telemetry data points over time.
+   - Implementation: The `telemetry` table has a Foreign Key (`vehicle_id`) 
+     pointing to the vehicle. Many rows in the telemetry table can share 
+     the same `vehicle_id`.
+
+C. Vehicle <--> Charging Session (1:N or One-to-Many)
+   - Rule: One vehicle can have multiple charging sessions over its lifetime.
+   - Implementation: The `charging_session` table links back using `vehicle_id`.
+
+D. Vehicle <--> Trip (1:N or One-to-Many)
+   - Rule: One vehicle drives many trips.
+   - Implementation: The `trip` table connects records using `vehicle_id`.
+
+E. Vehicle <--> Alert (1:N or One-to-Many)
+   - Rule: One vehicle can trigger multiple warning alerts.
+   - Implementation: The `alert` table stores the `vehicle_id` as a Foreign Key.
+
+* CASCADE DELETE: All Foreign Keys in this project use 'ON DELETE CASCADE'. 
+  This means if an Admin deletes a 'Vehicle' from the database, Oracle will 
+  automatically hunt down and delete every battery pack, trip, and alert 
+  associated with that vehicle so the database doesn't get cluttered with 
+  "orphan" data.
+
+--------------------------------------------------------------------
+3. DETAILED TABLE BREAKDOWN
+--------------------------------------------------------------------
+
+1) user_account
+   - Purpose: Stores login credentials for administrators.
+   - Columns:
+      - id (NUMBER): Primary Key.
+      - username (VARCHAR2): Unique string for logging in.
+      - password_hash (VARCHAR2): Securely stored password.
+      - is_admin (NUMBER): Acts as a boolean (1 for Yes, 0 for No).
+
+2) vehicle
+   - Purpose: The central hub entity. Every other table links back to this.
+   - Columns:
+      - id (VARCHAR2): Primary Key (e.g., 'EV-1001'). Matches the physical car.
+      - driver_name (VARCHAR2): The currently assigned driver.
+      - status (VARCHAR2): Status of the car ('ACTIVE', 'CHARGING', 'INACTIVE').
+      - last_update (TIMESTAMP): When the record was last modified.
+
+3) battery_pack
+   - Purpose: Stores hardware specifications of the battery installed in a car.
+   - Columns:
+      - id (VARCHAR2): Primary Key (e.g., 'BP-1234').
+      - vehicle_id (VARCHAR2): Foreign Key to `vehicle`. Also marked UNIQUE.
+      - capacity_kwh (NUMBER): Total energy capacity of the pack.
+
+4) telemetry
+   - Purpose: Time-series table logging the live data streaming from the cars.
+   - Columns:
+      - id (NUMBER): Primary Key (auto-incrementing sequence).
+      - vehicle_id (VARCHAR2): Foreign Key linking back to `vehicle`.
+      - timestamp (TIMESTAMP): Exact time the reading was taken.
+      - soc (NUMBER): State of Charge (0-100%).
+      - pack_voltage (NUMBER): Current voltage.
+      - pack_current (NUMBER): Current flow.
+      - temperature (NUMBER): Battery temperature.
+
+5) charging_session
+   - Purpose: Tracks the history of when a car was plugged in.
+   - Columns:
+      - id (NUMBER): Primary Key.
+      - vehicle_id (VARCHAR2): Foreign Key to `vehicle`.
+      - start_time (TIMESTAMP): Plug-in time.
+      - end_time (TIMESTAMP): Plug-out time (can be null if actively charging).
+      - energy_added_kwh (NUMBER): Total energy transferred.
+      - charging_type (VARCHAR2): Type of charger ('DCFC', 'Level 2').
+      - status (VARCHAR2): 'COMPLETED' or 'CHARGING'.
+
+6) trip
+   - Purpose: Logs completed journeys driven by the vehicle.
+   - Columns:
+      - id (NUMBER): Primary Key.
+      - vehicle_id (VARCHAR2): Foreign Key to `vehicle`.
+      - start_time (TIMESTAMP): Journey start.
+      - end_time (TIMESTAMP): Journey end.
+      - distance_km (NUMBER): Distance traveled.
+      - energy_used_kwh (NUMBER): Energy consumed during the drive.
+
+7) alert
+   - Purpose: Logs anomalies, warnings, or maintenance requests.
+   - Columns:
+      - id (NUMBER): Primary Key.
+      - vehicle_id (VARCHAR2): Foreign Key to `vehicle`.
+      - timestamp (TIMESTAMP): When the alert fired.
+      - alert_type (VARCHAR2): Description of the issue (e.g., 'Low Tire Pressure').
+      - status (VARCHAR2): 'ACTIVE' or 'RESOLVED'.
