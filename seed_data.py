@@ -47,8 +47,12 @@ def seed_database():
             for i in range(20):
                 # Simulate time series data
                 timestamp = now - timedelta(minutes=(20-i)*5)
-                # Slight SoC changes
-                soc_variance = (i * 0.5) if v.status == 'CHARGING' else -(i * 0.2)
+                # JUMPING SoC changes to make the graph look more interesting
+                if v.status == 'CHARGING':
+                    soc_variance = (i * random.uniform(1.0, 3.0)) 
+                else:
+                    soc_variance = -(i * random.uniform(0.5, 4.0)) 
+                    
                 current_soc = min(max(base_soc + soc_variance, 0), 100)
                 
                 t = Telemetry(
